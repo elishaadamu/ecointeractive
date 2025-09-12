@@ -1,0 +1,74 @@
+body,
+html,
+#root {
+  height: 100%;
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+button {
+  padding: 3px 7px;
+  background: #0077cc;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #005fa3;
+}
+
+.leaflet-popup-pane {
+  z-index: 1000 !important;
+}
+
+.popup-content {
+  padding: 10px;
+}
+
+.comment-form-container {
+  margin-top: 10px;
+}
+
+.project-popup {
+  border-radius: 8px;
+  background: white;
+  max-width: 300px;
+  font-size: 14px;
+}
+
+.project-popup h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 18px;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.project-details p {
+  margin: 5px 0;
+}
+
+.project-details strong {
+  color: #555;
+}
+
+.popup-buttons {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+}
+
+.popup-buttons button {
+  flex: 1;
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-size: 13px;
+}
+
+.comment-form-container {
+  margin-top: 10px;
+  padding-top: 5px;
+  border-top: 1px solid #eee;
+}
