@@ -18,7 +18,7 @@ const commentsFilePath = path.join(__dirname, "comments.json");
 const usersFilePath = path.join(__dirname, "users.json");
 
 app.get("/", (req, res) => {
-  res.json({ message: "Server is running! Access /api/comments for comments." });
+  res.json({ message: "Cannot GET" });
 });
 
 // Login route
