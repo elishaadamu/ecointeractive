@@ -78,6 +78,17 @@ app.post("/api/comments", async (req, res) => {
   }
 });
 
+// Delete all comments
+app.delete("/api/comments", async (req, res) => {
+  try {
+    await fs.writeFile(commentsFilePath, "[]");
+    res.json({ message: "All comments deleted successfully." });
+  } catch (err) {
+    console.error("Error deleting comments:", err);
+    res.status(500).json({ error: "Failed to delete comments" });
+  }
+});
+
 // Handle 404 for unknown routes
 app.use((req, res) => {
   res.status(404).json({ error: "Not Found" });
