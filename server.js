@@ -50,6 +50,7 @@ app.get("/api/comments", async (req, res) => {
     if (err.code === "ENOENT") {
       return res.json([]); // Return empty array if file doesn't exist
     }
+    console.error("Error reading comments file:", err);
     res.status(500).json({ error: "Failed to read comments" });
   }
 });
