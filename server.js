@@ -7,9 +7,6 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Define the path to the client build directory
-const clientBuildPath = path.join(__dirname, "..", "client", "dist");
-
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -17,6 +14,10 @@ app.use(cors());
 app.use(express.json());
 
 const commentsFilePath = path.join(__dirname, "comments.json");
+
+app.get("/", (req, res) => {
+  res.json({ message: "Server is running! Access /api/comments for comments." });
+});
 
 // Get all comments
 app.get("/api/comments", async (req, res) => {
@@ -55,8 +56,9 @@ app.post("/api/comments", async (req, res) => {
   }
 });
 
-app.get("*", (req, res) => {
-  res.sendFile(path.join(clientBuildPath, "index.html"));
+// Handle 404 for unknown routes
+app.use((req, res) => {
+  res.status(404).json({ error: "Not Found" });
 });
 
 app.listen(PORT, () => {
