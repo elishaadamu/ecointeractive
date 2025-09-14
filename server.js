@@ -4,6 +4,7 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import bcrypt from "bcrypt";
+import multer from "multer";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +17,20 @@ app.use(express.json());
 
 const commentsFilePath = path.join(__dirname, "comments.json");
 const usersFilePath = path.join(__dirname, "users.json");
+const geojsonFilesDir = path.join(__dirname, "geojson_files");
+const activeGeojsonFilePath = path.join(__dirname, "active_geojson.txt");
+
+// Multer storage configuration
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, geojsonFilesDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, file.originalname);
+  },
+});
+
+const upload = multer({ storage: storage });
 
 app.get("/", (req, res) => {
   res.json({ message: "Cannot GET" });
@@ -87,6 +102,76 @@ app.delete("/api/comments", async (req, res) => {
     console.error("Error deleting comments:", err);
     res.status(500).json({ error: "Failed to delete comments" });
   }
+});
+
+// GeoJSON Endpoints
+
+// List available GeoJSON files
+app.get("/api/geojson/list", async (req, res) => {
+  try {
+    const files = await fs.readdir(geojsonFilesDir);
+    const geojsonFiles = files.filter((file) => file.endsWith(".geojson"));
+    res.json(geojsonFiles);
+  } catch (err) {
+    console.error("Error listing GeoJSON files:", err);
+    res.status(500).json({ error: "Failed to list GeoJSON files" });
+  }
+});
+
+// Get active GeoJSON file
+app.get("/api/geojson/active", async (req, res) => {
+  try {
+    let activeFilename = null;
+    try {
+      activeFilename = (await fs.readFile(activeGeojsonFilePath, "utf8")).trim();
+    } catch (err) {
+      if (err.code === "ENOENT") {
+        // No active file set yet, return a default or empty response
+        return res.json({ filename: null, geojsonData: null });
+      } else {
+        throw err;
+      }
+    }
+
+    const activeFilePath = path.join(geojsonFilesDir, activeFilename);
+    const geojsonData = JSON.parse(await fs.readFile(activeFilePath, "utf8"));
+    res.json({ filename: activeFilename, geojsonData });
+  } catch (err) {
+    console.error("Error fetching active GeoJSON:", err);
+    res.status(500).json({ error: "Failed to fetch active GeoJSON" });
+  }
+});
+
+// Set active GeoJSON file
+app.post("/api/geojson/set-active", async (req, res) => {
+  const { filename } = req.body;
+
+  if (!filename) {
+    return res.status(400).json({ error: "Filename is required" });
+  }
+
+  const filePath = path.join(geojsonFilesDir, filename);
+
+  try {
+    // Check if file exists
+    await fs.access(filePath);
+    await fs.writeFile(activeGeojsonFilePath, filename);
+    res.json({ message: `${filename} set as active GeoJSON` });
+  } catch (err) {
+    console.error("Error setting active GeoJSON:", err);
+    if (err.code === "ENOENT") {
+      return res.status(404).json({ error: "File not found" });
+    }
+    res.status(500).json({ error: "Failed to set active GeoJSON" });
+  }
+});
+
+// Upload GeoJSON file
+app.post("/api/geojson/upload", upload.single("geojson"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
+  res.json({ message: `${req.file.originalname} uploaded successfully` });
 });
 
 // Handle 404 for unknown routes
