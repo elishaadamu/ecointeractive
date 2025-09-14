@@ -42,7 +42,7 @@ function App() {
     const fetchComments = async () => {
       try {
         const response = await axios.get(
-          "https://ecointeractive.onrender.com/api/comments"
+          "http://localhost:3001/api/comments"
         );
         setComments(response.data);
         console.log("Fetched comments:", response.data);
@@ -55,7 +55,7 @@ function App() {
     const fetchActiveGeoJSON = async () => {
       try {
         const response = await axios.get(
-          "https://ecointeractive.onrender.com/api/geojson/active"
+          "http://localhost:3001/api/geojson/active"
         ); // Fetch active GeoJSON from backend
         setGeoData(response.data.geojsonData);
         setCurrentGeoDataFilename(response.data.filename);
@@ -142,7 +142,7 @@ function App() {
   const addComment = async (comment) => {
     try {
       const response = await axios.post(
-        "https://ecointeractive.onrender.com/api/comments",
+        "http://localhost:3001/api/comments",
         comment
       );
       console.log("Comment added:", response);

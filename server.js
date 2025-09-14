@@ -167,11 +167,18 @@ app.post("/api/geojson/set-active", async (req, res) => {
 });
 
 // Upload GeoJSON file
-app.post("/api/geojson/upload", upload.single("geojson"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
-  res.json({ message: `${req.file.originalname} uploaded successfully` });
+app.post("/api/geojson/upload", (req, res) => {
+  upload.single("geojson")(req, res, (err) => {
+    if (err) {
+      console.error("Multer upload error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+    console.log(`File uploaded: ${req.file.originalname} to ${req.file.path}`);
+    res.json({ message: `${req.file.originalname} uploaded successfully` });
+  });
 });
 
 // Handle 404 for unknown routes

@@ -1,0 +1,12 @@
+{
+"type": "FeatureCollection",
+"name": "projects2",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "project_id": "P1", "project_title": "Project 1", "cost": 200000.0, "project_type": "Transit", "improvement": "Transit Upgrade", "locality": "Hopewell", "product": "PLAN2050", "year": 2025.0 }, "geometry": { "type": "Point", "coordinates": [ -77.31777, 37.28561 ] } },
+{ "type": "Feature", "properties": { "project_id": "P2", "project_title": "Project 2", "cost": 440000.0, "project_type": "Bike/Ped", "improvement": "New Construction", "locality": "Hopewell", "product": "TIP", "year": 2026.0 }, "geometry": { "type": "Point", "coordinates": [ -77.31496, 37.30912 ] } },
+{ "type": "Feature", "properties": { "project_id": "P3", "project_title": "Project 3", "cost": 300000.0, "project_type": "Roadway", "improvement": "Rehabilitation", "locality": "Hopewell", "product": "TIP", "year": 2025.0 }, "geometry": { "type": "Point", "coordinates": [ -77.33373, 37.28418 ] } },
+{ "type": "Feature", "properties": { "project_id": "P4", "project_title": "Project 4", "cost": 115000.0, "project_type": "Bike/Ped", "improvement": "New Construction", "locality": "Hopewell", "product": "PLAN2050", "year": 2027.0 }, "geometry": { "type": "Point", "coordinates": [ -77.26951, 37.26496 ] } },
+{ "type": "Feature", "properties": { "project_id": "P5", "project_title": "Project 5", "cost": 380000.0, "project_type": "Bike/Ped", "improvement": "Resurfacing", "locality": "Hopewell", "product": "TIP", "year": 2026.0 }, "geometry": { "type": "Point", "coordinates": [ -77.2898, 37.27004 ] } }
+]
+}

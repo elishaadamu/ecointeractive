@@ -10,7 +10,7 @@ function GeoJSONManager({ setGeoData, currentGeoDataFilename, setCurrentGeoDataF
   useEffect(() => {
     const fetchInitialGeoJSONData = async () => {
       try {
-        const response = await axios.get('https://ecointeractive.onrender.com/api/geojson/active');
+        const response = await axios.get('http://localhost:3001/api/geojson/active');
         setGeoData(response.data.geojsonData);
         setCurrentGeoDataFilename(response.data.filename);
         setSelectedFile(response.data.filename); // Set selected file in dropdown
@@ -22,7 +22,7 @@ function GeoJSONManager({ setGeoData, currentGeoDataFilename, setCurrentGeoDataF
 
     const fetchAvailableGeoJSONs = async () => {
       try {
-        const response = await axios.get('https://ecointeractive.onrender.com/api/geojson/list');
+        const response = await axios.get('http://localhost:3001/api/geojson/list');
         setAvailableGeoJSONs(response.data);
       } catch (error) {
         console.error('Error fetching available GeoJSON files:', error);
@@ -46,10 +46,10 @@ function GeoJSONManager({ setGeoData, currentGeoDataFilename, setCurrentGeoDataF
 
     try {
       // Call backend to set the active GeoJSON file
-      await axios.post('https://ecointeractive.onrender.com/api/geojson/set-active', { filename: selectedFile }); // Replace with your backend URL
+      await axios.post('http://localhost:3001/api/geojson/set-active', { filename: selectedFile }); // Replace with your backend URL
 
       // Fetch the content of the newly active GeoJSON file and update parent state
-      const response = await axios.get('https://ecointeractive.onrender.com/api/geojson/active');
+      const response = await axios.get('http://localhost:3001/api/geojson/active');
       setGeoData(response.data.geojsonData);
       setCurrentGeoDataFilename(response.data.filename); // Update the filename in parent state
 
@@ -74,7 +74,7 @@ function GeoJSONManager({ setGeoData, currentGeoDataFilename, setCurrentGeoDataF
     formData.append('geojson', fileToUpload);
 
     try {
-      await axios.post('https://ecointeractive.onrender.com/api/geojson/upload', formData, {
+      await axios.post('http://localhost:3001/api/geojson/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
