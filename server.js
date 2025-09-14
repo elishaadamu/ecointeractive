@@ -104,6 +104,32 @@ app.delete("/api/comments", async (req, res) => {
   }
 });
 
+// Delete all GeoJSON files
+app.delete("/api/geojson/delete-all", async (req, res) => {
+  try {
+    const files = await fs.readdir(geojsonFilesDir);
+    const geojsonFiles = files.filter((file) => file.endsWith(".geojson"));
+
+    for (const file of geojsonFiles) {
+      await fs.unlink(path.join(geojsonFilesDir, file));
+    }
+
+    // Also delete the active_geojson.txt file
+    try {
+      await fs.unlink(activeGeojsonFilePath);
+    } catch (err) {
+      if (err.code !== "ENOENT") {
+        console.error("Error deleting active_geojson.txt:", err);
+      }
+    }
+
+    res.json({ message: "All GeoJSON files deleted successfully." });
+  } catch (err) {
+    console.error("Error deleting GeoJSON files:", err);
+    res.status(500).json({ error: "Failed to delete GeoJSON files" });
+  }
+});
+
 // GeoJSON Endpoints
 
 // List available GeoJSON files
