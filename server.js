@@ -149,7 +149,9 @@ app.get("/api/geojson/active", async (req, res) => {
   try {
     let activeFilename = null;
     try {
-      activeFilename = (await fs.readFile(activeGeojsonFilePath, "utf8")).trim();
+      activeFilename = (
+        await fs.readFile(activeGeojsonFilePath, "utf8")
+      ).trim();
     } catch (err) {
       if (err.code === "ENOENT") {
         // No active file set yet, return a default or empty response
