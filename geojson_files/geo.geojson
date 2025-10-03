@@ -1,6 +1,6 @@
 {
 "type": "FeatureCollection",
-"name": "projects_new",
+"name": "Projects",
 "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
 "features": [
 { "type": "Feature", "properties": { "UPC": -30760, "Scope": "Facilities for Pedestrians and Bicycles", "Description": "APPOMATTOX RIVER TRAIL - GROVE AVE (SQUAW TO PETER JONES)", "Type": "TIP", "County": "Petersburg" }, "geometry": { "type": "Point", "coordinates": [ -77.410739, 37.232141 ] } },
