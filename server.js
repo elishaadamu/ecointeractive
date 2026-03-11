@@ -26,8 +26,18 @@ if (!MONGODB_URI) {
   console.error("MONGODB_URI is not defined in .env file");
 } else {
   mongoose.connect(MONGODB_URI)
-    .then(() => console.log("Connected to MongoDB"))
-    .catch(err => console.error("MongoDB connection error:", err));
+    .then(async () => {
+      console.log("Connected to MongoDB successfully!");
+      // Only seed and start listening AFTER we know the DB is ready
+      await seedAdmin();
+      app.listen(PORT, () => {
+        console.log(`Server is running on PORT ${PORT}`);
+      });
+    })
+    .catch(err => {
+      console.error("CRITICAL: MongoDB connection error:", err);
+      process.exit(1); // Stop the server if we can't connect
+    });
 }
 
 // Schemas
@@ -65,8 +75,6 @@ const seedAdmin = async () => {
     const adminEmail = "zmumuni.da@gmail.com";
     const existingUser = await User.findOne({ email: adminEmail });
     if (!existingUser) {
-      // Use the hashed password from your users.json if you want to keep it same
-      // Or create a new one. Since the user already has one, let's use it.
       await User.create({
         email: adminEmail,
         password: "$2b$10$Nfx5dFzKDAn5BTdI/6ewr.P5uv/aT1cY64uZqIsv9WjZjpfwHEX8a"
@@ -74,10 +82,10 @@ const seedAdmin = async () => {
       console.log("Admin user seeded.");
     }
   } catch (err) {
-    console.error("Migration error:", err);
+    console.error("Migration error during seed:", err);
   }
 };
-seedAdmin();
+// Removed seedAdmin() call from here, moved to .then() of connection
 
 app.get("/", (req, res) => {
   res.json({ message: "Zakari API is running" });
@@ -211,7 +219,7 @@ app.post("/api/geojson/upload", upload.single("geojson"), async (req, res) => {
     await Project.findOneAndUpdate(
       { filename },
       { data: geojsonData, uploadedAt: new Date() },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
 
     console.log(`File uploaded to MongoDB: ${filename}`);
@@ -227,6 +235,4 @@ app.use((req, res) => {
   res.status(404).json({ error: "Not Found" });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on PORT ${PORT}`);
-});
+// Removed app.listen from here, moved to .then() of connection
