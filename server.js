@@ -5,6 +5,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 import bcrypt from "bcrypt";
 import multer from "multer";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,25 +19,68 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-const commentsFilePath = path.join(__dirname, "comments.json");
-const usersFilePath = path.join(__dirname, "users.json");
-const geojsonFilesDir = path.join(__dirname, "geojson_files");
-const activeGeojsonFilePath = path.join(__dirname, "active_geojson.txt");
+// MongoDB Connection
+const MONGODB_URI = process.env.MONGODB_URI;
 
-// Multer storage configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, geojsonFilesDir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, file.originalname);
-  },
+if (!MONGODB_URI) {
+  console.error("MONGODB_URI is not defined in .env file");
+} else {
+  mongoose.connect(MONGODB_URI)
+    .then(() => console.log("Connected to MongoDB"))
+    .catch(err => console.error("MongoDB connection error:", err));
+}
+
+// Schemas
+const userSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true }
 });
 
+const commentSchema = new mongoose.Schema({
+  username: String,
+  comment: String,
+  timestamp: { type: Date, default: Date.now },
+  projectId: String,
+  projectTitle: String
+}, { strict: false }); // Allow any structure for comments
+
+const projectSchema = new mongoose.Schema({
+  filename: { type: String, required: true, unique: true },
+  data: { type: mongoose.Schema.Types.Mixed, required: true },
+  isActive: { type: Boolean, default: false },
+  uploadedAt: { type: Date, default: Date.now }
+});
+
+const User = mongoose.model("User", userSchema);
+const Comment = mongoose.model("Comment", commentSchema);
+const Project = mongoose.model("Project", projectSchema);
+
+// Multer storage in memory for GeoJSON upload
+const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+// Migration helper (One-time check to ensure the admin user exists)
+const seedAdmin = async () => {
+  try {
+    const adminEmail = "zmumuni.da@gmail.com";
+    const existingUser = await User.findOne({ email: adminEmail });
+    if (!existingUser) {
+      // Use the hashed password from your users.json if you want to keep it same
+      // Or create a new one. Since the user already has one, let's use it.
+      await User.create({
+        email: adminEmail,
+        password: "$2b$10$Nfx5dFzKDAn5BTdI/6ewr.P5uv/aT1cY64uZqIsv9WjZjpfwHEX8a"
+      });
+      console.log("Admin user seeded.");
+    }
+  } catch (err) {
+    console.error("Migration error:", err);
+  }
+};
+seedAdmin();
+
 app.get("/", (req, res) => {
-  res.json({ message: "Cannot GET" });
+  res.json({ message: "Zakari API is running" });
 });
 
 // Login route
@@ -41,9 +88,7 @@ app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const data = await fs.readFile(usersFilePath, "utf8");
-    const users = JSON.parse(data);
-    const user = users.find((u) => u.email === email);
+    const user = await User.findOne({ email });
 
     if (user && (await bcrypt.compare(password, user.password))) {
       res.json({ message: "Login successful!" });
@@ -59,34 +104,17 @@ app.post("/api/login", async (req, res) => {
 // Get all comments
 app.get("/api/comments", async (req, res) => {
   try {
-    const data = await fs.readFile(commentsFilePath, "utf8");
-    res.json(JSON.parse(data));
+    const comments = await Comment.find().sort({ timestamp: -1 });
+    res.json(comments);
   } catch (err) {
-    if (err.code === "ENOENT") {
-      return res.json([]); // Return empty array if file doesn't exist
-    }
     res.status(500).json({ error: "Failed to read comments" });
   }
 });
 
 // Add a new comment
 app.post("/api/comments", async (req, res) => {
-  const newComment = req.body;
-
   try {
-    let comments = [];
-    try {
-      const data = await fs.readFile(commentsFilePath, "utf8");
-      comments = JSON.parse(data);
-    } catch (err) {
-      if (err.code !== "ENOENT") {
-        throw err;
-      }
-    }
-
-    comments.push(newComment);
-
-    await fs.writeFile(commentsFilePath, JSON.stringify(comments, null, 2));
+    const newComment = await Comment.create(req.body);
     res.status(201).json(newComment);
   } catch (err) {
     res.status(500).json({ error: "Failed to save comment" });
@@ -96,7 +124,7 @@ app.post("/api/comments", async (req, res) => {
 // Delete all comments
 app.delete("/api/comments", async (req, res) => {
   try {
-    await fs.writeFile(commentsFilePath, "[]");
+    await Comment.deleteMany({});
     res.json({ message: "All comments deleted successfully." });
   } catch (err) {
     console.error("Error deleting comments:", err);
@@ -104,40 +132,22 @@ app.delete("/api/comments", async (req, res) => {
   }
 });
 
-// Delete all GeoJSON files
+// Delete all Projects (GeoJSON)
 app.delete("/api/geojson/delete-all", async (req, res) => {
   try {
-    const files = await fs.readdir(geojsonFilesDir);
-    const geojsonFiles = files.filter((file) => file.endsWith(".geojson"));
-
-    for (const file of geojsonFiles) {
-      await fs.unlink(path.join(geojsonFilesDir, file));
-    }
-
-    // Also delete the active_geojson.txt file
-    try {
-      await fs.unlink(activeGeojsonFilePath);
-    } catch (err) {
-      if (err.code !== "ENOENT") {
-        console.error("Error deleting active_geojson.txt:", err);
-      }
-    }
-
-    res.json({ message: "All GeoJSON files deleted successfully." });
+    await Project.deleteMany({});
+    res.json({ message: "All GeoJSON records deleted successfully." });
   } catch (err) {
-    console.error("Error deleting GeoJSON files:", err);
-    res.status(500).json({ error: "Failed to delete GeoJSON files" });
+    console.error("Error deleting GeoJSON records:", err);
+    res.status(500).json({ error: "Failed to delete GeoJSON records" });
   }
 });
-
-// GeoJSON Endpoints
 
 // List available GeoJSON files
 app.get("/api/geojson/list", async (req, res) => {
   try {
-    const files = await fs.readdir(geojsonFilesDir);
-    const geojsonFiles = files.filter((file) => file.endsWith(".geojson"));
-    res.json(geojsonFiles);
+    const projects = await Project.find({}, "filename");
+    res.json(projects.map(p => p.filename));
   } catch (err) {
     console.error("Error listing GeoJSON files:", err);
     res.status(500).json({ error: "Failed to list GeoJSON files" });
@@ -147,23 +157,11 @@ app.get("/api/geojson/list", async (req, res) => {
 // Get active GeoJSON file
 app.get("/api/geojson/active", async (req, res) => {
   try {
-    let activeFilename = null;
-    try {
-      activeFilename = (
-        await fs.readFile(activeGeojsonFilePath, "utf8")
-      ).trim();
-    } catch (err) {
-      if (err.code === "ENOENT") {
-        // No active file set yet, return a default or empty response
-        return res.json({ filename: null, geojsonData: null });
-      } else {
-        throw err;
-      }
+    const activeProject = await Project.findOne({ isActive: true });
+    if (!activeProject) {
+      return res.json({ filename: null, geojsonData: null });
     }
-
-    const activeFilePath = path.join(geojsonFilesDir, activeFilename);
-    const geojsonData = JSON.parse(await fs.readFile(activeFilePath, "utf8"));
-    res.json({ filename: activeFilename, geojsonData });
+    res.json({ filename: activeProject.filename, geojsonData: activeProject.data });
   } catch (err) {
     console.error("Error fetching active GeoJSON:", err);
     res.status(500).json({ error: "Failed to fetch active GeoJSON" });
@@ -178,35 +176,50 @@ app.post("/api/geojson/set-active", async (req, res) => {
     return res.status(400).json({ error: "Filename is required" });
   }
 
-  const filePath = path.join(geojsonFilesDir, filename);
-
   try {
-    // Check if file exists
-    await fs.access(filePath);
-    await fs.writeFile(activeGeojsonFilePath, filename);
+    // Set all to inactive
+    await Project.updateMany({}, { isActive: false });
+    // Set the chosen one to active
+    const result = await Project.findOneAndUpdate(
+      { filename },
+      { isActive: true },
+      { new: true }
+    );
+
+    if (!result) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
     res.json({ message: `${filename} set as active GeoJSON` });
   } catch (err) {
     console.error("Error setting active GeoJSON:", err);
-    if (err.code === "ENOENT") {
-      return res.status(404).json({ error: "File not found" });
-    }
     res.status(500).json({ error: "Failed to set active GeoJSON" });
   }
 });
 
 // Upload GeoJSON file
-app.post("/api/geojson/upload", (req, res) => {
-  upload.single("geojson")(req, res, (err) => {
-    if (err) {
-      console.error("Multer upload error:", err);
-      return res.status(500).json({ error: err.message });
-    }
+app.post("/api/geojson/upload", upload.single("geojson"), async (req, res) => {
+  try {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
-    console.log(`File uploaded: ${req.file.originalname} to ${req.file.path}`);
-    res.json({ message: `${req.file.originalname} uploaded successfully` });
-  });
+
+    const geojsonData = JSON.parse(req.file.buffer.toString());
+    const filename = req.file.originalname;
+
+    // Save or Update in MongoDB
+    await Project.findOneAndUpdate(
+      { filename },
+      { data: geojsonData, uploadedAt: new Date() },
+      { upsert: true, new: true }
+    );
+
+    console.log(`File uploaded to MongoDB: ${filename}`);
+    res.json({ message: `${filename} uploaded successfully to database` });
+  } catch (err) {
+    console.error("Upload error:", err);
+    res.status(500).json({ error: "Failed to upload GeoJSON" });
+  }
 });
 
 // Handle 404 for unknown routes
@@ -215,5 +228,5 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server is running on PORT ${PORT}`);
 });
