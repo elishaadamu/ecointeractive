@@ -7,6 +7,7 @@ import bcrypt from "bcrypt";
 import multer from "multer";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import { geojson as fgbGeojson } from "flatgeobuf";
 
 dotenv.config();
 
@@ -176,9 +177,9 @@ app.get("/api/geojson/active", async (req, res) => {
   }
 });
 
-// Set active GeoJSON file
+// Set active GeoJSON/FlatGeobuf file
 app.post("/api/geojson/set-active", async (req, res) => {
-  const { filename } = req.body;
+  const { filename, geojsonData } = req.body;
 
   if (!filename) {
     return res.status(400).json({ error: "Filename is required" });
@@ -187,33 +188,52 @@ app.post("/api/geojson/set-active", async (req, res) => {
   try {
     // Set all to inactive
     await Project.updateMany({}, { isActive: false });
-    // Set the chosen one to active
+
+    const updateFields = { isActive: true };
+    if (geojsonData) {
+      updateFields.data = geojsonData;
+      updateFields.uploadedAt = new Date();
+    }
+
+    // Set the chosen one to active (upsert if geojsonData provided)
     const result = await Project.findOneAndUpdate(
       { filename },
-      { isActive: true },
-      { new: true }
+      updateFields,
+      { upsert: !!geojsonData, new: true }
     );
 
     if (!result) {
-      return res.status(404).json({ error: "Project not found" });
+      return res.status(404).json({ error: "Project not found in database" });
     }
 
-    res.json({ message: `${filename} set as active GeoJSON` });
+    console.log(`Dataset set active in MongoDB: ${filename}`);
+    res.json({ message: `${filename} set as active dataset` });
   } catch (err) {
-    console.error("Error setting active GeoJSON:", err);
-    res.status(500).json({ error: "Failed to set active GeoJSON" });
+    console.error("Error setting active dataset:", err);
+    res.status(500).json({ error: "Failed to set active dataset" });
   }
 });
 
-// Upload GeoJSON file
+// Upload GeoJSON / FlatGeobuf file
 app.post("/api/geojson/upload", upload.single("geojson"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    const geojsonData = JSON.parse(req.file.buffer.toString());
     const filename = req.file.originalname;
+    let geojsonData;
+
+    if (filename.toLowerCase().endsWith(".fgb")) {
+      const iter = fgbGeojson.deserialize(req.file.buffer);
+      const features = [];
+      for await (const f of iter) {
+        features.push(f);
+      }
+      geojsonData = { type: "FeatureCollection", features };
+    } else {
+      geojsonData = JSON.parse(req.file.buffer.toString());
+    }
 
     // Save or Update in MongoDB
     await Project.findOneAndUpdate(
@@ -222,11 +242,11 @@ app.post("/api/geojson/upload", upload.single("geojson"), async (req, res) => {
       { upsert: true, returnDocument: 'after' }
     );
 
-    console.log(`File uploaded to MongoDB: ${filename}`);
+    console.log(`File uploaded to MongoDB: ${filename} (${geojsonData.features ? geojsonData.features.length : 0} points)`);
     res.json({ message: `${filename} uploaded successfully to database` });
   } catch (err) {
     console.error("Upload error:", err);
-    res.status(500).json({ error: "Failed to upload GeoJSON" });
+    res.status(500).json({ error: "Failed to upload dataset: " + err.message });
   }
 });
 
