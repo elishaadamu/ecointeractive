@@ -152,6 +152,21 @@ app.delete("/api/geojson/delete-all", async (req, res) => {
   }
 });
 
+// Delete single Project (GeoJSON / FGB) by filename
+app.delete("/api/geojson/delete/:filename", async (req, res) => {
+  const { filename } = req.params;
+  try {
+    const result = await Project.deleteOne({ filename });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: "Dataset file not found in database" });
+    }
+    res.json({ message: `${filename} deleted successfully from database.` });
+  } catch (err) {
+    console.error("Error deleting dataset record:", err);
+    res.status(500).json({ error: "Failed to delete dataset record" });
+  }
+});
+
 // List available GeoJSON files
 app.get("/api/geojson/list", async (req, res) => {
   try {
