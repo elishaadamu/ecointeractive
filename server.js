@@ -178,6 +178,21 @@ app.get("/api/geojson/list", async (req, res) => {
   }
 });
 
+// Get single GeoJSON / FlatGeobuf file by filename from MongoDB
+app.get("/api/geojson/get/:filename", async (req, res) => {
+  const { filename } = req.params;
+  try {
+    const project = await Project.findOne({ filename });
+    if (!project) {
+      return res.status(404).json({ error: "Dataset file not found in database" });
+    }
+    res.json({ filename: project.filename, geojsonData: project.data });
+  } catch (err) {
+    console.error("Error fetching dataset:", err);
+    res.status(500).json({ error: "Failed to fetch dataset" });
+  }
+});
+
 // Get active GeoJSON file
 app.get("/api/geojson/active", async (req, res) => {
   try {
@@ -222,7 +237,7 @@ app.post("/api/geojson/set-active", async (req, res) => {
     }
 
     console.log(`Dataset set active in MongoDB: ${filename}`);
-    res.json({ message: `${filename} set as active dataset` });
+    res.json({ message: `${filename} set as active dataset`, geojsonData: result.data });
   } catch (err) {
     console.error("Error setting active dataset:", err);
     res.status(500).json({ error: "Failed to set active dataset" });
@@ -240,12 +255,20 @@ app.post("/api/geojson/upload", upload.single("geojson"), async (req, res) => {
     let geojsonData;
 
     if (filename.toLowerCase().endsWith(".fgb")) {
-      const iter = fgbGeojson.deserialize(req.file.buffer);
-      const features = [];
-      for await (const f of iter) {
-        features.push(f);
+      try {
+        const iter = fgbGeojson.deserialize(req.file.buffer);
+        const features = [];
+        for await (const f of iter) {
+          features.push(f);
+        }
+        geojsonData = { type: "FeatureCollection", features };
+      } catch (fgbErr) {
+        try {
+          geojsonData = JSON.parse(req.file.buffer.toString());
+        } catch (jsonErr) {
+          throw new Error("File is neither valid FlatGeobuf binary nor GeoJSON text format");
+        }
       }
-      geojsonData = { type: "FeatureCollection", features };
     } else {
       geojsonData = JSON.parse(req.file.buffer.toString());
     }
